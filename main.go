@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/go-playground/validator/v10"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/labstack/echo/v4"
 	"github.com/zulfikarrosadi/go-blog-api/article"
@@ -13,8 +14,9 @@ import (
 
 func main() {
 	e := echo.New()
+	validator := validator.New()
 	articleRepository := article.NewArticleRepository(GetDBConnection())
-	articleService := article.NewArticleService(articleRepository)
+	articleService := article.NewArticleService(articleRepository, validator)
 
 	e.GET("/", func(c echo.Context) error {
 		return c.String(http.StatusOK, "Hello World")
