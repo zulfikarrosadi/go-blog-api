@@ -14,6 +14,6 @@ type Article struct {
 
 type ArticleRequest struct {
 	Id      string `param:"id"`
-	Title   string `json:"title"`
+	Title   string `json:"title" validate:"required"`
 	Content string `json:"content"`
 }
