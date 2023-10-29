@@ -28,16 +28,7 @@ func main() {
 	e.POST("/api/articles", func(c echo.Context) error {
 		articleRequest := article.ArticleRequest{}
 		c.Bind(&articleRequest)
-		r := articleService.CreateArticle(
-			&article.Article{
-				Title: articleRequest.Title,
-				Content: sql.NullString{
-					String: articleRequest.Content,
-					Valid:  len(articleRequest.Content) != 0,
-				},
-			},
-			c.Request().Context(),
-		)
+		r := articleService.CreateArticle(&articleRequest, c.Request().Context())
 		return c.JSON(r.Code, r)
 	})
 	e.DELETE("/api/articles/:id", func(c echo.Context) error {
