@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+
+	"github.com/go-playground/validator/v10"
+	"github.com/zulfikarrosadi/go-blog-api/lib"
 )
 
 type Response struct {
@@ -14,13 +17,14 @@ type Response struct {
 }
 
 type Error struct {
-	Message string        `json:"message"`
-	Detail  []ErrorDetail `json:"details"`
+	Message string `json:"message"`
+	Detail  any    `json:"details"`
 }
 
 type ErrorDetail struct {
-	Path  string `json:"path"`
-	Value string `json:"value"`
+	Path    string `json:"path"`
+	Value   string `json:"value"`
+	Message string `json:"message"`
 }
 
 type ArticleService interface {
@@ -32,11 +36,15 @@ type ArticleService interface {
 
 type ArticleServiceImpl struct {
 	ArticleRepository
+	v *validator.Validate
 }
 
-func NewArticleService(articleRepository ArticleRepository) *ArticleServiceImpl {
+func NewArticleService(
+	articleRepository ArticleRepository, v *validator.Validate,
+) *ArticleServiceImpl {
 	return &ArticleServiceImpl{
 		ArticleRepository: articleRepository,
+		v:                 v,
 	}
 }
 
@@ -102,7 +110,20 @@ func (as *ArticleServiceImpl) FindArticleById(id int, ctx context.Context) Respo
 	}
 }
 
-func (as *ArticleServiceImpl) CreateArticle(data *Article, ctx context.Context) Response {
+func (as *ArticleServiceImpl) CreateArticle(data *ArticleRequest, ctx context.Context) Response {
+	err := as.v.Struct(data)
+	if err != nil {
+		validatedError := lib.ValidateError(err.(validator.ValidationErrors))
+		return Response{
+			Status: "fail",
+			Code:   http.StatusBadRequest,
+			Error: Error{
+				Message: "validation error",
+				Detail:  validatedError,
+			},
+		}
+	}
+
 	errorChannel := make(chan error)
 	articleIdChannel := make(chan int64)
 	defer close(errorChannel)
@@ -113,7 +134,7 @@ func (as *ArticleServiceImpl) CreateArticle(data *Article, ctx context.Context) 
 		errorChannel <- err
 		articleIdChannel <- id
 	}()
-	err := <-errorChannel
+	err = <-errorChannel
 	if err != nil {
 		return Response{
 			Status: "fail",
@@ -125,7 +146,7 @@ func (as *ArticleServiceImpl) CreateArticle(data *Article, ctx context.Context) 
 					Value: data.Title,
 				}, {
 					Path:  "content",
-					Value: data.Content.String,
+					Value: data.Content,
 				}},
 			},
 		}
