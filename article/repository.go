@@ -8,7 +8,7 @@ import (
 type ArticleRepository interface {
 	GetArticles(context.Context) ([]Article, error)
 	FindArticleById(int, context.Context) *Article
-	CreateArticle(*Article, context.Context) (int64, error)
+	CreateArticle(*ArticleRequest, context.Context) (int64, error)
 	DeleteArticleById(int, context.Context) error
 }
 
@@ -49,7 +49,7 @@ func (as *ArticleRepositoryImpl) FindArticleById(id int, ctx context.Context) *A
 	return &article
 }
 
-func (as *ArticleRepositoryImpl) CreateArticle(data *Article, ctx context.Context) (int64, error) {
+func (as *ArticleRepositoryImpl) CreateArticle(data *ArticleRequest, ctx context.Context) (int64, error) {
 	q := "INSERT INTO articles (title, content) VALUES (?,?)"
 	r, err := as.DB.ExecContext(ctx, q, data.Title, data.Content)
 	if err != nil {
