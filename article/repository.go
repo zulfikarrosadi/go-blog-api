@@ -3,12 +3,15 @@ package article
 import (
 	"context"
 	"database/sql"
+	"fmt"
+
+	"github.com/zulfikarrosadi/go-blog-api/auth"
 )
 
 type ArticleRepository interface {
 	GetArticles(context.Context) ([]Article, error)
 	FindArticleById(int, context.Context) *Article
-	CreateArticle(*ArticleRequest, context.Context) (int64, error)
+	CreateArticle(*CreateArticleRequest, context.Context) (int64, error)
 	DeleteArticleById(int, context.Context) error
 }
 
