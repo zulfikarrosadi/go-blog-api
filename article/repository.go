@@ -43,20 +43,23 @@ func (as *ArticleRepositoryImpl) GetArticles(ctx context.Context) ([]Article, er
 }
 
 func (as *ArticleRepositoryImpl) FindArticleById(id int, ctx context.Context) *Article {
-	q := "SELECT id, title, content, created_at FROM articles WHERE id = ?"
+	q := "SELECT id, title, content, created_at, author FROM articles WHERE id = ?"
 	article := Article{}
 	r := as.DB.QueryRowContext(ctx, q, id)
-	err := r.Scan(&article.Id, &article.Title, &article.Content, &article.CreatedAt)
+	err := r.Scan(&article.Id, &article.Title, &article.Content, &article.CreatedAt, &article.Author)
 	if err != nil {
+		fmt.Println("error in findArticleById repo", err)
 		return nil
 	}
 	return &article
 }
 
-func (as *ArticleRepositoryImpl) CreateArticle(data *ArticleRequest, ctx context.Context) (int64, error) {
-	q := "INSERT INTO articles (title, content) VALUES (?,?)"
-	r, err := as.DB.ExecContext(ctx, q, data.Title, data.Content)
+func (as *ArticleRepositoryImpl) CreateArticle(data *CreateArticleRequest, ctx context.Context) (int64, error) {
+	accessToken := ctx.Value("accessToken").(auth.AccessToken)
+	q := "INSERT INTO articles (title, content, author) VALUES (?, ?, ?)"
+	r, err := as.DB.ExecContext(ctx, q, data.Title, data.Content, accessToken.UserId)
 	if err != nil {
+		fmt.Println("error in createarticle repo", err)
 		return 0, err
 	}
 
