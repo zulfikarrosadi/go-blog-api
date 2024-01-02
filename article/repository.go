@@ -31,6 +31,7 @@ func (as *ArticleRepositoryImpl) GetArticles(ctx context.Context) ([]Article, er
 
 	r, err := as.QueryContext(ctx, q)
 	if err != nil {
+		fmt.Println("error in getArticles repo", err)
 		return []Article{}, err
 	}
 	for r.Next() {
