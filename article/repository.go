@@ -71,6 +71,7 @@ func (as *ArticleRepositoryImpl) DeleteArticleById(id int, ctx context.Context) 
 	q := "DELETE FROM articles WHERE id = ?"
 	_, err := as.DB.ExecContext(ctx, q, id)
 	if err != nil {
+		fmt.Println("error in deleteArticle repo", err)
 		return err
 	}
 	return nil
