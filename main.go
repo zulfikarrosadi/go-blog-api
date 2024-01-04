@@ -9,6 +9,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/zulfikarrosadi/go-blog-api/article"
 	"github.com/zulfikarrosadi/go-blog-api/auth"
+	"github.com/zulfikarrosadi/go-blog-api/lib"
 )
 
 func main() {
@@ -36,6 +37,7 @@ func main() {
 	e.GET("/api/articles/:id", articleHandler.GetArticleById)
 	protectedRouteGroup.POST("/articles", articleHandler.CreateArticle)
 	protectedRouteGroup.DELETE("/articles/:id", articleHandler.DeleteArticle)
+	protectedRouteGroup.POST("/files", lib.FileUploadHandler)
 
 	e.Logger.Fatal(e.Start("localhost:3000"))
 }
