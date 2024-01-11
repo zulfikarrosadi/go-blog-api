@@ -56,8 +56,8 @@ func (as *ArticleRepositoryImpl) FindArticleById(id int, ctx context.Context) *A
 
 func (as *ArticleRepositoryImpl) CreateArticle(data *CreateArticleRequest, ctx context.Context) (int64, error) {
 	accessToken := ctx.Value("accessToken").(auth.AccessToken)
-	q := "INSERT INTO articles (title, content, author) VALUES (?, ?, ?)"
-	r, err := as.DB.ExecContext(ctx, q, data.Title, data.Content, accessToken.UserId)
+	q := "INSERT INTO articles (title, content, author, slug) VALUES (?, ?, ?, ?)"
+	r, err := as.DB.ExecContext(ctx, q, data.Title, data.Content, accessToken.UserId, data.Slug)
 	if err != nil {
 		fmt.Println("error in createarticle repo", err)
 		return 0, err
