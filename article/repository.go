@@ -14,6 +14,7 @@ type ArticleRepository interface {
 	FindArticleById(int, context.Context) *Article
 	CreateArticle(*CreateArticleRequest, context.Context) (int64, error)
 	DeleteArticleById(int, context.Context) error
+	UpdateArticleById(int, *UpdateArticleRequest, context.Context) error
 }
 
 type ArticleRepositoryImpl struct {
@@ -80,5 +81,21 @@ func (as *ArticleRepositoryImpl) DeleteArticleById(id int, ctx context.Context) 
 		fmt.Println("error in deleteArticle repo", err)
 		return errors.New("article not found")
 	}
+	return nil
+}
+
+func (as *ArticleRepositoryImpl) UpdateArticleById(id int, data *UpdateArticleRequest, ctx context.Context) error {
+	user := ctx.Value("accessToken").(auth.AccessToken)
+	q := "UPDATE articles SET title = ?, content = ?, slug = ? WHERE id = ? AND author = ?"
+
+	result, err := as.DB.ExecContext(ctx, q, data.Title, data.Content, data.Slug, data.Id, user.UserId)
+	updatedArticle, _ := result.RowsAffected()
+
+	fmt.Println("updated article: ", updatedArticle)
+	if err != nil || updatedArticle < 1 {
+		fmt.Println("error updating article: ", err)
+		return errors.New("article not found")
+	}
+
 	return nil
 }
