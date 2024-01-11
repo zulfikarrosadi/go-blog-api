@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/zulfikarrosadi/go-blog-api/lib"
@@ -117,6 +118,8 @@ func (as *ArticleServiceImpl) CreateArticle(data *CreateArticleRequest, ctx cont
 		}
 	}
 
+	data.Slug = createSlug(data.Title)
+
 	errorChannel := make(chan error)
 	articleIdChannel := make(chan int64)
 	defer close(errorChannel)
@@ -149,8 +152,9 @@ func (as *ArticleServiceImpl) CreateArticle(data *CreateArticleRequest, ctx cont
 		Status: "success",
 		Code:   http.StatusCreated,
 		Data: struct {
-			Id int64 `json:"id"`
-		}{Id: <-articleIdChannel},
+			Id   int64  `json:"id"`
+			Slug string `json:"slug"`
+		}{Id: <-articleIdChannel, Slug: data.Slug},
 	}
 }
 
