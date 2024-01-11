@@ -176,3 +176,10 @@ func (as *ArticleServiceImpl) DeleteArticleById(id int, ctx context.Context) web
 		Code:   http.StatusNoContent,
 	}
 }
+
+func createSlug(title string) string {
+	splitedTitle := strings.Split(strings.Trim(title, " "), " ")
+	slug := strings.ToLower(strings.Join(splitedTitle, "-"))
+
+	return slug
+}
