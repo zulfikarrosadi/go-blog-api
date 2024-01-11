@@ -22,4 +22,5 @@ type ArticleRequest struct {
 type CreateArticleRequest struct {
 	Title   string `json:"title" validate:"required"`
 	Content string `json:"content"`
+	Slug    string
 }
