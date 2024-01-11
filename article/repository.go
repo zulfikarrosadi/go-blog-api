@@ -3,6 +3,7 @@ package article
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/zulfikarrosadi/go-blog-api/auth"
@@ -68,11 +69,16 @@ func (as *ArticleRepositoryImpl) CreateArticle(data *CreateArticleRequest, ctx c
 }
 
 func (as *ArticleRepositoryImpl) DeleteArticleById(id int, ctx context.Context) error {
-	q := "DELETE FROM articles WHERE id = ?"
-	_, err := as.DB.ExecContext(ctx, q, id)
-	if err != nil {
+	q := "DELETE FROM articles WHERE id = ? AND author = ?"
+	user := ctx.Value("accessToken").(auth.AccessToken)
+	result, err := as.DB.ExecContext(ctx, q, id, user.UserId)
+	deletedArticle, _ := result.RowsAffected()
+
+	fmt.Println("deleted article is:", deletedArticle)
+	if err != nil || deletedArticle < 1 {
+		fmt.Println("deleted article is:", deletedArticle)
 		fmt.Println("error in deleteArticle repo", err)
-		return err
+		return errors.New("article not found")
 	}
 	return nil
 }
