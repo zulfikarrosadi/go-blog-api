@@ -167,12 +167,10 @@ func (as *ArticleServiceImpl) DeleteArticleById(id int, ctx context.Context) web
 	}()
 	err := <-errorChannel
 	if err != nil {
+		fmt.Println(err)
 		return web.Response{
 			Status: "fail",
 			Code:   http.StatusNotFound,
-			Error: web.Error{
-				Message: "cannot delete article, please try again",
-			},
 		}
 	}
 	return web.Response{
