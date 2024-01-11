@@ -82,7 +82,16 @@ func (aa *ArticleApiImpl) DeleteArticle(c echo.Context) error {
 }
 
 func (aa *ArticleApiImpl) UpdateArticle(c echo.Context) error {
-	return c.String(http.StatusNotImplemented, "NOT IMPLEMENTED")
+	articleRequestData := &UpdateArticleRequest{}
+	c.Bind(articleRequestData)
+	id, err := strconv.Atoi(articleRequestData.Id)
+	if err != nil {
+		fmt.Printf("article id param: %v, err: %v", id, err)
+		return c.NoContent(http.StatusNotFound)
+	}
+	ctx := aa.GetUserLoginInfo(c)
+	r := aa.ArticleServiceImpl.UpdateArticleById(id, articleRequestData, ctx)
+	return c.JSON(r.Code, r)
 }
 
 func (aa *ArticleApiImpl) GetUserLoginInfo(c echo.Context) context.Context {
