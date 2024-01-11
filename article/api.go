@@ -81,3 +81,10 @@ func (aa *ArticleApiImpl) DeleteArticle(c echo.Context) error {
 func (aa *ArticleApiImpl) UpdateArticle(c echo.Context) error {
 	return c.String(http.StatusNotImplemented, "NOT IMPLEMENTED")
 }
+
+func (aa *ArticleApiImpl) GetUserLoginInfo(c echo.Context) context.Context {
+	accessToken := c.Get("accessToken").(auth.AccessToken)
+	ctx := context.WithValue(c.Request().Context(), "accessToken", accessToken)
+
+	return ctx
+}
