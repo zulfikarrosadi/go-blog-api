@@ -24,3 +24,11 @@ type CreateArticleRequest struct {
 	Content string `json:"content"`
 	Slug    string
 }
+
+type UpdateArticleRequest struct {
+	Id      string `param:"id"`
+	Title   string `json:"title" validate:"required"`
+	Content string `json:"content"`
+	Slug    string
+	Author  int
+}
