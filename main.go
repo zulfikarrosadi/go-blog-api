@@ -34,7 +34,7 @@ func main() {
 	protectedRouteGroup.Use(authMiddleware.AuthenticationRequired)
 
 	e.GET("/api/articles", articleHandler.GetArticles)
-	e.GET("/api/articles/:id", articleHandler.GetArticleById)
+	e.GET("/api/articles/:slug", articleHandler.GetArticleById)
 	protectedRouteGroup.POST("/articles", articleHandler.CreateArticle)
 	protectedRouteGroup.DELETE("/articles/:id", articleHandler.DeleteArticle)
 	protectedRouteGroup.POST("/files", lib.FileUploadHandler)
