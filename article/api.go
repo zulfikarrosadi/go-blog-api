@@ -74,8 +74,11 @@ func (aa *ArticleApiImpl) DeleteArticle(c echo.Context) error {
 	articleRequest := &ArticleRequest{}
 	c.Bind(articleRequest)
 	id, _ := strconv.Atoi(articleRequest.Id)
-	r := aa.ArticleServiceImpl.DeleteArticleById(id, c.Request().Context())
-	return c.JSON(r.Code, r)
+
+	ctx := aa.GetUserLoginInfo(c)
+
+	r := aa.ArticleServiceImpl.DeleteArticleById(id, ctx)
+	return c.NoContent(r.Code)
 }
 
 func (aa *ArticleApiImpl) UpdateArticle(c echo.Context) error {
