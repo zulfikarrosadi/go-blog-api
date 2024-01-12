@@ -127,8 +127,7 @@ func (as *ArticleServiceImpl) CreateArticle(data *CreateArticleRequest, ctx cont
 			},
 		}
 	}
-
-	data.Slug = createSlug(data.Title)
+	data.Slug = createSlug(data.Title, data.CreatedAt)
 
 	errorChannel := make(chan error)
 	articleIdChannel := make(chan int64)
