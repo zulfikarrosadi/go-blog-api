@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/go-playground/validator/v10"
@@ -190,9 +191,21 @@ func (as *ArticleServiceImpl) DeleteArticleById(id int, ctx context.Context) web
 	}
 }
 
-func createSlug(title string) string {
+func createSlug(title string, timestamp int64) string {
 	splitedTitle := strings.Split(strings.Trim(title, " "), " ")
 	slug := strings.ToLower(strings.Join(splitedTitle, "-"))
+	stringifyTimestamp := strconv.FormatInt(timestamp, 10)
+	slug = slug + "-" + stringifyTimestamp
 
 	return slug
+}
+
+func extractTimestampFromSlug(slug string) (int64, error) {
+	splitedSlug := strings.Split(slug, "-")
+	i, err := strconv.ParseInt(splitedSlug[len(splitedSlug)-1], 10, 64)
+	if err != nil {
+		return 0, err
+	}
+
+	return i, nil
 }
