@@ -10,7 +10,7 @@ import (
 
 type ArticleRepository interface {
 	GetArticles(context.Context) ([]Article, error)
-	FindArticleById(int, context.Context) *Article
+	FindArticleById(int64, context.Context) *Article
 	CreateArticle(*CreateArticleRequest, context.Context) (int64, error)
 	DeleteArticleById(int, context.Context) error
 }
@@ -42,10 +42,10 @@ func (as *ArticleRepositoryImpl) GetArticles(ctx context.Context) ([]Article, er
 	return articles, nil
 }
 
-func (as *ArticleRepositoryImpl) FindArticleById(id int, ctx context.Context) *Article {
-	q := "SELECT id, title, content, created_at, author FROM articles WHERE id = ?"
+func (as *ArticleRepositoryImpl) FindArticleById(timestamp int64, ctx context.Context) *Article {
+	q := "SELECT id, title, content, created_at, author FROM articles WHERE created_at = ?"
 	article := Article{}
-	r := as.DB.QueryRowContext(ctx, q, id)
+	r := as.DB.QueryRowContext(ctx, q, timestamp)
 	err := r.Scan(&article.Id, &article.Title, &article.Content, &article.CreatedAt, &article.Author)
 	if err != nil {
 		fmt.Println("error in findArticleById repo", err)
