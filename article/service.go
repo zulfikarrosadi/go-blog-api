@@ -24,7 +24,7 @@ type ErrorDetail struct {
 
 type ArticleService interface {
 	GetArticles(context.Context) web.Response
-	FindArticleById(int, context.Context) web.Response
+	FindArticleById(string, context.Context) web.Response
 	CreateArticle(*CreateArticleRequest, context.Context) web.Response
 	DeleteArticleById(int, context.Context) web.Response
 }
@@ -81,12 +81,21 @@ func (as *ArticleServiceImpl) GetArticles(ctx context.Context) web.Response {
 	}
 }
 
-func (as *ArticleServiceImpl) FindArticleById(id int, ctx context.Context) web.Response {
+func (as *ArticleServiceImpl) FindArticleById(slug string, ctx context.Context) web.Response {
 	articleChannel := make(chan *Article)
 	defer close(articleChannel)
 
+	timestamp, err := extractTimestampFromSlug(slug)
+	if err != nil {
+		return web.Response{
+			Status: "fail",
+			Code:   http.StatusNotFound,
+			Data:   nil,
+		}
+	}
+
 	go func() {
-		articleChannel <- as.ArticleRepository.FindArticleById(id, ctx)
+		articleChannel <- as.ArticleRepository.FindArticleById(timestamp, ctx)
 	}()
 
 	article := <-articleChannel
