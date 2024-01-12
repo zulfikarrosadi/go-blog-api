@@ -2,7 +2,6 @@ package article
 
 import (
 	"database/sql"
-	"time"
 )
 
 type Article struct {
@@ -10,7 +9,7 @@ type Article struct {
 	Title     string         `json:"title"`
 	Content   sql.NullString `json:"content"`
 	Author    int            `json:"author"`
-	CreatedAt time.Time      `json:"created_at"`
+	CreatedAt int64          `json:"created_at"`
 }
 
 type ArticleRequest struct {
@@ -20,7 +19,8 @@ type ArticleRequest struct {
 }
 
 type CreateArticleRequest struct {
-	Title   string `json:"title" validate:"required"`
-	Content string `json:"content"`
-	Slug    string
+	Title     string `json:"title" validate:"required"`
+	Content   string `json:"content"`
+	Slug      string
+	CreatedAt int64
 }
