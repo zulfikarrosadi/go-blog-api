@@ -56,6 +56,7 @@ func (aa *ArticleApiImpl) GetArticleById(c echo.Context) error {
 func (aa *ArticleApiImpl) CreateArticle(c echo.Context) error {
 	articleRequest := &CreateArticleRequest{}
 	c.Bind(&articleRequest)
+	articleRequest.CreatedAt = time.Now().Unix()
 
 	accessToken := c.Get("accessToken").(auth.AccessToken)
 	ctx := context.WithValue(c.Request().Context(), "accessToken", accessToken)
