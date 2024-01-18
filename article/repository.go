@@ -3,9 +3,9 @@ package article
 import (
 	"context"
 	"database/sql"
-	"fmt"
 
 	"github.com/zulfikarrosadi/go-blog-api/auth"
+	"github.com/zulfikarrosadi/go-blog-api/lib"
 )
 
 type ArticleRepository interface {
@@ -31,7 +31,7 @@ func (as *ArticleRepositoryImpl) GetArticles(ctx context.Context) ([]Article, er
 
 	r, err := as.QueryContext(ctx, q)
 	if err != nil {
-		fmt.Println("error in getArticles repo", err)
+		lib.ValidateErrorV2("get_articles_repo", err)
 		return []Article{}, err
 	}
 	for r.Next() {
@@ -48,7 +48,7 @@ func (as *ArticleRepositoryImpl) FindArticleById(timestamp int64, ctx context.Co
 	r := as.DB.QueryRowContext(ctx, q, timestamp)
 	err := r.Scan(&article.Id, &article.Title, &article.Content, &article.CreatedAt, &article.Author)
 	if err != nil {
-		fmt.Println("error in findArticleById repo", err)
+		lib.ValidateErrorV2("find_article_by_id_repo", err)
 		return nil
 	}
 	return &article
@@ -58,8 +58,9 @@ func (as *ArticleRepositoryImpl) CreateArticle(data *CreateArticleRequest, ctx c
 	accessToken := ctx.Value("accessToken").(auth.AccessToken)
 	q := "INSERT INTO articles (title, content, author, slug, created_at) VALUES (?, ?, ?, ?, ?)"
 	r, err := as.DB.ExecContext(ctx, q, data.Title, data.Content, accessToken.UserId, data.Slug, data.CreatedAt)
+
 	if err != nil {
-		fmt.Println("error in createarticle repo", err)
+		lib.ValidateErrorV2("create_article_repo", err)
 		return 0, err
 	}
 
@@ -71,7 +72,7 @@ func (as *ArticleRepositoryImpl) DeleteArticleById(id int, ctx context.Context) 
 	q := "DELETE FROM articles WHERE id = ?"
 	_, err := as.DB.ExecContext(ctx, q, id)
 	if err != nil {
-		fmt.Println("error in deleteArticle repo", err)
+		lib.ValidateErrorV2("delete_article_by_id_repo", err)
 		return err
 	}
 	return nil
