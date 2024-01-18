@@ -30,3 +30,22 @@ func (gri *GroupRepositoryImpl) CreateGroup(ctx context.Context, data *CreateGro
 	i, _ := r.LastInsertId()
 	return i, nil
 }
+
+func (gri *GroupRepositoryImpl) GetGroup(ctx context.Context) []Group {
+	q := "SELECT id, title, description, profile_picture, created_at FROM groups"
+	r, err := gri.QueryContext(ctx, q)
+	if err != nil {
+		lib.ValidateErrorV2("get_group_repo", err)
+		return nil
+	}
+
+	groups := []Group{}
+	for r.Next() {
+		group := Group{}
+		r.Scan(&group.Id, &group.Title, &group.Description, &group.ProfilePicture, &group.CreatedAt)
+		groups = append(groups, group)
+	}
+
+	return groups
+}
+
