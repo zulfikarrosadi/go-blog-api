@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
+	"github.com/zulfikarrosadi/go-blog-api/auth"
 	"github.com/zulfikarrosadi/go-blog-api/lib"
 )
 
@@ -19,8 +20,9 @@ type GroupRepositoryImpl struct {
 }
 
 func (gri *GroupRepositoryImpl) CreateGroup(ctx context.Context, data *CreateGroupRequest) (int64, error) {
-	q := "INSERT INTO groups (title, description) VALUE (?,?)"
-	r, err := gri.DB.ExecContext(ctx, q, data.Title, data.Description)
+	accessToken := ctx.Value("accessToken").(auth.AccessToken)
+	q := "INSERT INTO groups (title, description, created_by) VALUE (?,?,?)"
+	r, err := gri.DB.ExecContext(ctx, q, data.Title, data.Description, accessToken.UserId)
 	if err != nil {
 		lib.ValidateErrorV2("create_group_repo", err)
 		return 0, errors.New("failed to create group, please try again")
