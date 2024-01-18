@@ -67,7 +67,13 @@ func GetDBConnection() *sql.DB {
 	dsn := "root:@tcp(localhost:3306)/golang_article?parseTime=true"
 	d, err := sql.Open("mysql", dsn)
 	if err != nil {
-		log.Fatal(err)
+		lib.Logrus.WithFields(logrus.Fields{
+			"timestamp": time.Now(),
+			"details":   err.Error(),
+			"context": map[string]any{
+				"action": "get_db_connection",
+			},
+		}).Error("Failed to open connection to database")
 	}
 	d.SetMaxOpenConns(6)
 	d.SetMaxIdleConns(2)
