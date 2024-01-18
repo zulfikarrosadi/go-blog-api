@@ -49,3 +49,16 @@ func (gri *GroupRepositoryImpl) GetGroup(ctx context.Context) []Group {
 	return groups
 }
 
+func (gri *GroupRepositoryImpl) FindGroupById(ctx context.Context, id int64) (*Group, error) {
+	q := "SELECT id, title, description, profile_picture, created_at FROM groups WHERE id = ?"
+	r := gri.QueryRowContext(ctx, q, id)
+
+	group := &Group{}
+	err := r.Scan(&group.Id, &group.Title, &group.Description, &group.ProfilePicture, &group.CreatedAt)
+	if err != nil {
+		lib.ValidateErrorV2("find_group_by_id_repo", err)
+		return nil, err
+	}
+
+	return group, nil
+}
