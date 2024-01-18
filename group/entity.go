@@ -8,6 +8,7 @@ type Group struct {
 	Description    string    `json:"description"`
 	ProfilePicture string    `json:"profile_picture"`
 	CreatedAt      time.Time `json:"created_at"`
+	CreatedBy      int64     `json:"created_by"`
 }
 
 type CreateGroupRequest struct {
@@ -15,4 +16,5 @@ type CreateGroupRequest struct {
 	Description    string    `json:"description"`
 	ProfilePicture string    `json:"profile_picture"`
 	CreatedAt      time.Time `json:"created_at"`
+	CreatedBy      int64     `json:"created_by"`
 }
