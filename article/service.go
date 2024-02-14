@@ -3,6 +3,7 @@ package article
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -84,33 +85,57 @@ func (as *ArticleServiceImpl) GetArticles(ctx context.Context) web.Response {
 
 func (as *ArticleServiceImpl) FindArticleById(slug string, ctx context.Context) web.Response {
 	articleChannel := make(chan *Article)
+	errorChannel := make(chan error)
 	defer close(articleChannel)
+	defer close(errorChannel)
 
 	timestamp, err := extractTimestampFromSlug(slug)
 	if err != nil {
 		return web.Response{
 			Status: "fail",
 			Code:   http.StatusNotFound,
-			Data:   nil,
+			Error: web.Error{
+				Message: "article not found",
+			},
+			Data: nil,
 		}
 	}
 
 	go func() {
-		articleChannel <- as.ArticleRepository.FindArticleById(timestamp, ctx)
+		article, err := as.ArticleRepository.FindArticleById(timestamp, ctx)
+		if err != nil {
+			errorChannel <- err
+			return
+		}
+		articleChannel <- article
 	}()
 
-	article := <-articleChannel
-	if article == nil {
+	select {
+	case result := <-errorChannel:
+		if newErr := result.(*net.OpError); newErr != nil {
+			return web.Response{
+				Status: "fail",
+				Code:   http.StatusInternalServerError,
+				Error: web.Error{
+					Message: "something went wrong, please wait and try again",
+				},
+				Data: nil,
+			}
+		}
 		return web.Response{
 			Status: "fail",
 			Code:   http.StatusNotFound,
-			Data:   nil,
+			Error: web.Error{
+				Message: "article not found",
+			},
+			Data: nil,
 		}
-	}
-	return web.Response{
-		Status: "success",
-		Code:   http.StatusOK,
-		Data:   article,
+	case result := <-articleChannel:
+		return web.Response{
+			Status: "success",
+			Code:   http.StatusOK,
+			Data:   result,
+		}
 	}
 }
 
