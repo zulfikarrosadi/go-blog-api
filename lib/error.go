@@ -49,6 +49,7 @@ func ValidateError(validationError validator.ValidationErrors) []ErrorDetail {
 }
 
 func ValidateErrorV2(action string, err error) {
+	fmt.Printf("error in %v: %v", action, err)
 	// check for database and query error
 	if driverErr, ok := err.(*mysql.MySQLError); ok {
 		switch driverErr.Number {
@@ -65,6 +66,7 @@ func ValidateErrorV2(action string, err error) {
 		}
 	}
 
+	// check for database auth error
 	if errors.Is(err, sql.ErrNoRows) {
 		ErrorLog(action, "username or password is incorrect", err)
 	}
