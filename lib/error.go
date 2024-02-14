@@ -74,6 +74,6 @@ func ValidateErrorV2(action string, err error) {
 	// check for database connection error
 	// eg: port error, protocol error, etc
 	if newErr := err.(*net.OpError); newErr != nil {
-		ErrorLog(action, newErr.Error(), newErr)
+		ErrorLog(action, "database connection error", newErr)
 	}
 }
