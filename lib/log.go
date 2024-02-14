@@ -16,12 +16,13 @@ func init() {
 	if err != nil {
 		fmt.Println(err)
 	}
-	defer f.Close()
+	// defer f.Close()
 	fmt.Println(f, err)
 	Logrus.SetOutput(f)
 }
 
 func ErrorLog(action string, message string, err error) {
+	recover()
 	Logrus.WithFields(logrus.Fields{
 		"timestamp": time.Now(),
 		"details":   err.Error(),
