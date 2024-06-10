@@ -58,6 +58,7 @@ func main() {
 	e.GET("/api/articles/:slug", articleHandler.GetArticleById)
 	protectedRouteGroup.POST("/articles", articleHandler.CreateArticle)
 	protectedRouteGroup.DELETE("/articles/:id", articleHandler.DeleteArticle)
+	protectedRouteGroup.PUT("/articles/:id", articleHandler.UpdateArticle)
 	protectedRouteGroup.POST("/files", lib.FileUploadHandler)
 
 	e.Logger.Fatal(e.Start("localhost:3000"))

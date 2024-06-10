@@ -29,6 +29,7 @@ type ArticleService interface {
 	FindArticleById(string, context.Context) web.Response
 	CreateArticle(*CreateArticleRequest, context.Context) web.Response
 	DeleteArticleById(int, context.Context) web.Response
+	UpdateArticleById(int, *UpdateArticleRequest, context.Context) web.Response
 }
 
 type ArticleServiceImpl struct {
@@ -201,17 +202,33 @@ func (as *ArticleServiceImpl) DeleteArticleById(id int, ctx context.Context) web
 	}()
 	err := <-errorChannel
 	if err != nil {
+		fmt.Println(err)
 		return web.Response{
 			Status: "fail",
 			Code:   http.StatusNotFound,
-			Error: web.Error{
-				Message: "cannot delete article, please try again",
-			},
 		}
 	}
 	return web.Response{
 		Status: "success",
 		Code:   http.StatusNoContent,
+	}
+}
+
+func (as *ArticleServiceImpl) UpdateArticleById(articleId int, data *UpdateArticleRequest, ctx context.Context) web.Response {
+	data.Slug = createSlug(data.Title)
+	err := as.ArticleRepository.UpdateArticleById(articleId, data, ctx)
+	if err != nil {
+		return web.Response{
+			Status: "fail",
+			Code:   http.StatusBadRequest,
+			Error: web.Error{
+				Message: "cannot update the article, please try again",
+			},
+		}
+	}
+	return web.Response{
+		Status: "success",
+		Code:   http.StatusOK,
 	}
 }
 

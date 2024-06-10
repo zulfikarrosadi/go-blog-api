@@ -24,3 +24,11 @@ type CreateArticleRequest struct {
 	Slug      string
 	CreatedAt int64
 }
+
+type UpdateArticleRequest struct {
+	Id      string `param:"id"`
+	Title   string `json:"title" validate:"required"`
+	Content string `json:"content"`
+	Slug    string
+	Author  int
+}

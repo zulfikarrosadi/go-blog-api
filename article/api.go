@@ -69,10 +69,29 @@ func (aa *ArticleApiImpl) DeleteArticle(c echo.Context) error {
 	articleRequest := &ArticleRequest{}
 	c.Bind(articleRequest)
 	id, _ := strconv.Atoi(articleRequest.Id)
-	r := aa.ArticleServiceImpl.DeleteArticleById(id, c.Request().Context())
-	return c.JSON(r.Code, r)
+
+	ctx := aa.GetUserLoginInfo(c)
+
+	r := aa.ArticleServiceImpl.DeleteArticleById(id, ctx)
+	return c.NoContent(r.Code)
 }
 
 func (aa *ArticleApiImpl) UpdateArticle(c echo.Context) error {
-	return c.String(http.StatusNotImplemented, "NOT IMPLEMENTED")
+	articleRequestData := &UpdateArticleRequest{}
+	c.Bind(articleRequestData)
+	id, err := strconv.Atoi(articleRequestData.Id)
+	if err != nil {
+		fmt.Printf("article id param: %v, err: %v", id, err)
+		return c.NoContent(http.StatusNotFound)
+	}
+	ctx := aa.GetUserLoginInfo(c)
+	r := aa.ArticleServiceImpl.UpdateArticleById(id, articleRequestData, ctx)
+	return c.JSON(r.Code, r)
+}
+
+func (aa *ArticleApiImpl) GetUserLoginInfo(c echo.Context) context.Context {
+	accessToken := c.Get("accessToken").(auth.AccessToken)
+	ctx := context.WithValue(c.Request().Context(), "accessToken", accessToken)
+
+	return ctx
 }
