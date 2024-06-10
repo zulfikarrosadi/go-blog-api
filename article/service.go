@@ -3,7 +3,9 @@ package article
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/go-playground/validator/v10"
@@ -24,7 +26,7 @@ type ErrorDetail struct {
 
 type ArticleService interface {
 	GetArticles(context.Context) web.Response
-	FindArticleById(int, context.Context) web.Response
+	FindArticleById(string, context.Context) web.Response
 	CreateArticle(*CreateArticleRequest, context.Context) web.Response
 	DeleteArticleById(int, context.Context) web.Response
 	UpdateArticleById(int, *UpdateArticleRequest, context.Context) web.Response
@@ -82,26 +84,59 @@ func (as *ArticleServiceImpl) GetArticles(ctx context.Context) web.Response {
 	}
 }
 
-func (as *ArticleServiceImpl) FindArticleById(id int, ctx context.Context) web.Response {
+func (as *ArticleServiceImpl) FindArticleById(slug string, ctx context.Context) web.Response {
 	articleChannel := make(chan *Article)
+	errorChannel := make(chan error)
 	defer close(articleChannel)
+	defer close(errorChannel)
 
-	go func() {
-		articleChannel <- as.ArticleRepository.FindArticleById(id, ctx)
-	}()
-
-	article := <-articleChannel
-	if article == nil {
+	timestamp, err := extractTimestampFromSlug(slug)
+	if err != nil {
 		return web.Response{
 			Status: "fail",
 			Code:   http.StatusNotFound,
-			Data:   nil,
+			Error: web.Error{
+				Message: "article not found",
+			},
+			Data: nil,
 		}
 	}
-	return web.Response{
-		Status: "success",
-		Code:   http.StatusOK,
-		Data:   article,
+
+	go func() {
+		article, err := as.ArticleRepository.FindArticleById(timestamp, ctx)
+		if err != nil {
+			errorChannel <- err
+			return
+		}
+		articleChannel <- article
+	}()
+
+	select {
+	case result := <-errorChannel:
+		if newErr := result.(*net.OpError); newErr != nil {
+			return web.Response{
+				Status: "fail",
+				Code:   http.StatusInternalServerError,
+				Error: web.Error{
+					Message: "something went wrong, please wait and try again",
+				},
+				Data: nil,
+			}
+		}
+		return web.Response{
+			Status: "fail",
+			Code:   http.StatusNotFound,
+			Error: web.Error{
+				Message: "article not found",
+			},
+			Data: nil,
+		}
+	case result := <-articleChannel:
+		return web.Response{
+			Status: "success",
+			Code:   http.StatusOK,
+			Data:   result,
+		}
 	}
 }
 
@@ -118,8 +153,7 @@ func (as *ArticleServiceImpl) CreateArticle(data *CreateArticleRequest, ctx cont
 			},
 		}
 	}
-
-	data.Slug = createSlug(data.Title)
+	data.Slug = createSlug(data.Title, data.CreatedAt)
 
 	errorChannel := make(chan error)
 	articleIdChannel := make(chan int64)
@@ -198,9 +232,21 @@ func (as *ArticleServiceImpl) UpdateArticleById(articleId int, data *UpdateArtic
 	}
 }
 
-func createSlug(title string) string {
+func createSlug(title string, timestamp int64) string {
 	splitedTitle := strings.Split(strings.Trim(title, " "), " ")
 	slug := strings.ToLower(strings.Join(splitedTitle, "-"))
+	stringifyTimestamp := strconv.FormatInt(timestamp, 10)
+	slug = slug + "-" + stringifyTimestamp
 
 	return slug
+}
+
+func extractTimestampFromSlug(slug string) (int64, error) {
+	splitedSlug := strings.Split(slug, "-")
+	i, err := strconv.ParseInt(splitedSlug[len(splitedSlug)-1], 10, 64)
+	if err != nil {
+		return 0, err
+	}
+
+	return i, nil
 }

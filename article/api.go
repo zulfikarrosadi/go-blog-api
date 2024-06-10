@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/zulfikarrosadi/go-blog-api/auth"
@@ -36,16 +37,9 @@ func (aa *ArticleApiImpl) GetArticles(c echo.Context) error {
 }
 
 func (aa *ArticleApiImpl) GetArticleById(c echo.Context) error {
-	id, err := strconv.Atoi(c.QueryParam("id"))
-	if err != nil {
-		return c.JSON(http.StatusNotFound, web.Response{
-			Status: "fail",
-			Code:   http.StatusNotFound,
-			Data:   nil,
-		})
-	}
-	s := c.Param("slug")
-	if trimed := strings.Trim(s, " "); len(trimed) < 1 || s == "" {
+	slug := c.Param("slug")
+
+	if trimed := strings.Trim(slug, " "); len(trimed) < 1 || slug == "" {
 		fmt.Println("slug is nil")
 		return c.JSON(http.StatusNotFound, web.Response{
 			Status: "fail",
@@ -54,7 +48,7 @@ func (aa *ArticleApiImpl) GetArticleById(c echo.Context) error {
 		})
 	}
 
-	r := aa.ArticleServiceImpl.FindArticleById(id, c.Request().Context())
+	r := aa.ArticleServiceImpl.FindArticleById(slug, c.Request().Context())
 
 	return c.JSON(r.Code, r)
 }
@@ -62,6 +56,7 @@ func (aa *ArticleApiImpl) GetArticleById(c echo.Context) error {
 func (aa *ArticleApiImpl) CreateArticle(c echo.Context) error {
 	articleRequest := &CreateArticleRequest{}
 	c.Bind(&articleRequest)
+	articleRequest.CreatedAt = time.Now().Unix()
 
 	accessToken := c.Get("accessToken").(auth.AccessToken)
 	ctx := context.WithValue(c.Request().Context(), "accessToken", accessToken)

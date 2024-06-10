@@ -4,9 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 
-	"github.com/go-sql-driver/mysql"
+	"github.com/zulfikarrosadi/go-blog-api/lib"
 )
 
 type AuthRepository interface {
@@ -24,19 +23,14 @@ func NewAuthRepository(connection *sql.DB) *AuthRepositoryImpl {
 	}
 }
 
-const DUPLICATE_RECORD_VIOLATION = 1062
-
 func (as *AuthRepositoryImpl) CreateUser(
 	data *UserSignUpRequest, ctx context.Context,
 ) (*UserAuthResponse, error) {
 	q := "INSERT INTO users (username, password) VALUES (?,?)"
 	r, err := as.DB.ExecContext(ctx, q, data.Username, data.Password)
 	if err != nil {
-		fmt.Println(err)
-		if mysqlErr, ok := err.(*mysql.MySQLError); ok && mysqlErr.Number == DUPLICATE_RECORD_VIOLATION {
-			fmt.Println(err)
-			return nil, errors.New("this username is already in use. please use a different username or try logging in")
-		}
+		lib.ValidateErrorV2("craete_user_repo", err)
+		return nil, errors.New("this username is already in use. please use a different username or try logging in")
 	}
 	i, _ := r.LastInsertId()
 
@@ -52,9 +46,8 @@ func (as *AuthRepositoryImpl) FindUserByUsername(data *UserSignInRequest, ctx co
 	user := &User{}
 	err := r.Scan(&user.Id, &user.Username, &user.Password)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, errors.New("username or password is incorrect")
-		}
+		lib.ValidateErrorV2("find_user_by_username_repo", err)
+		return nil, errors.New("username or password is incorrect")
 	}
 	return user, nil
 }
