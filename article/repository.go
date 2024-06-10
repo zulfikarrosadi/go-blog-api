@@ -3,12 +3,15 @@ package article
 import (
 	"context"
 	"database/sql"
+
+	"github.com/zulfikarrosadi/go-blog-api/auth"
+	"github.com/zulfikarrosadi/go-blog-api/lib"
 )
 
 type ArticleRepository interface {
 	GetArticles(context.Context) ([]Article, error)
-	FindArticleById(int, context.Context) *Article
-	CreateArticle(*ArticleRequest, context.Context) (int64, error)
+	FindArticleById(int64, context.Context) (*Article, error)
+	CreateArticle(*CreateArticleRequest, context.Context) (int64, error)
 	DeleteArticleById(int, context.Context) error
 }
 
@@ -28,6 +31,7 @@ func (as *ArticleRepositoryImpl) GetArticles(ctx context.Context) ([]Article, er
 
 	r, err := as.QueryContext(ctx, q)
 	if err != nil {
+		lib.ValidateErrorV2("get_articles_repo", err)
 		return []Article{}, err
 	}
 	for r.Next() {
@@ -38,21 +42,25 @@ func (as *ArticleRepositoryImpl) GetArticles(ctx context.Context) ([]Article, er
 	return articles, nil
 }
 
-func (as *ArticleRepositoryImpl) FindArticleById(id int, ctx context.Context) *Article {
-	q := "SELECT id, title, content, created_at FROM articles WHERE id = ?"
+func (as *ArticleRepositoryImpl) FindArticleById(timestamp int64, ctx context.Context) (*Article, error) {
+	q := "SELECT id, title, content, created_at, author FROM articles WHERE created_at = ?"
 	article := Article{}
-	r := as.DB.QueryRowContext(ctx, q, id)
-	err := r.Scan(&article.Id, &article.Title, &article.Content, &article.CreatedAt)
+	r := as.DB.QueryRowContext(ctx, q, timestamp)
+	err := r.Scan(&article.Id, &article.Title, &article.Content, &article.CreatedAt, &article.Author)
 	if err != nil {
-		return nil
+		lib.ValidateErrorV2("find_article_by_id_repo", err)
+		return nil, err
 	}
-	return &article
+	return &article, err
 }
 
-func (as *ArticleRepositoryImpl) CreateArticle(data *ArticleRequest, ctx context.Context) (int64, error) {
-	q := "INSERT INTO articles (title, content) VALUES (?,?)"
-	r, err := as.DB.ExecContext(ctx, q, data.Title, data.Content)
+func (as *ArticleRepositoryImpl) CreateArticle(data *CreateArticleRequest, ctx context.Context) (int64, error) {
+	accessToken := ctx.Value("accessToken").(auth.AccessToken)
+	q := "INSERT INTO articles (title, content, author, slug, created_at) VALUES (?, ?, ?, ?, ?)"
+	r, err := as.DB.ExecContext(ctx, q, data.Title, data.Content, accessToken.UserId, data.Slug, data.CreatedAt)
+
 	if err != nil {
+		lib.ValidateErrorV2("create_article_repo", err)
 		return 0, err
 	}
 
@@ -64,6 +72,7 @@ func (as *ArticleRepositoryImpl) DeleteArticleById(id int, ctx context.Context) 
 	q := "DELETE FROM articles WHERE id = ?"
 	_, err := as.DB.ExecContext(ctx, q, id)
 	if err != nil {
+		lib.ValidateErrorV2("delete_article_by_id_repo", err)
 		return err
 	}
 	return nil

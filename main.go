@@ -2,52 +2,63 @@ package main
 
 import (
 	"database/sql"
-	"log"
-	"net/http"
-	"strconv"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
+	"github.com/sirupsen/logrus"
 	"github.com/zulfikarrosadi/go-blog-api/article"
+	"github.com/zulfikarrosadi/go-blog-api/auth"
+	"github.com/zulfikarrosadi/go-blog-api/lib"
 )
 
 func main() {
 	e := echo.New()
 	validator := validator.New()
+	db := GetDBConnection()
+
+	e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
+		LogStatus:    true,
+		LogRemoteIP:  true,
+		LogURIPath:   true,
+		LogMethod:    true,
+		LogUserAgent: true,
+		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
+			lib.Logrus.WithFields(logrus.Fields{
+				"uri_path":   v.URIPath,
+				"status":     v.Status,
+				"remote_ip":  v.RemoteIP,
+				"method":     v.Method,
+				"user_agent": v.UserAgent,
+			}).Info("request")
+			return nil
+		},
+	}))
+
 	articleRepository := article.NewArticleRepository(GetDBConnection())
 	articleService := article.NewArticleService(articleRepository, validator)
+	articleHandler := article.NewArticleApi(articleService)
 
-	e.GET("/", func(c echo.Context) error {
-		return c.String(http.StatusOK, "Hello World")
-	})
-	e.GET("/api/articles", func(c echo.Context) error {
-		r := articleService.GetArticles(c.Request().Context())
-		return c.JSON(200, r)
-	})
-	e.POST("/api/articles", func(c echo.Context) error {
-		articleRequest := article.ArticleRequest{}
-		c.Bind(&articleRequest)
-		r := articleService.CreateArticle(&articleRequest, c.Request().Context())
-		return c.JSON(r.Code, r)
-	})
-	e.DELETE("/api/articles/:id", func(c echo.Context) error {
-		articleRequest := new(article.ArticleRequest)
-		c.Bind(articleRequest)
-		id, _ := strconv.Atoi(articleRequest.Id)
-		r := articleService.DeleteArticleById(id, c.Request().Context())
-		return c.JSON(r.Code, r)
-	})
-	e.GET("/api/articles/:id", func(c echo.Context) error {
-		articleRequest := new(article.ArticleRequest)
-		c.Bind(articleRequest)
-		id, _ := strconv.Atoi(articleRequest.Id)
-		r := articleService.FindArticleById(id, c.Request().Context())
-		if r.Code == http.StatusNotFound {
-			return c.JSON(r.Code, r)
-		}
-		return c.JSON(r.Code, r)
-	})
+	authRepository := auth.NewAuthRepository(db)
+	authService := auth.NewAuthService(authRepository, validator)
+	authHandler := auth.NewAuthHandler(authService)
+	authMiddleware := auth.NewAuthMiddleware()
+
+	e.POST("/api/signin", authHandler.SignInHandler)
+	e.POST("/api/signup", authHandler.SignUpHandler)
+	e.POST("/api/refresh", authHandler.RefreshTokenHandler)
+
+	protectedRouteGroup := e.Group("/api/auth")
+	protectedRouteGroup.Use(authMiddleware.DeserializeUser)
+	protectedRouteGroup.Use(authMiddleware.AuthenticationRequired)
+
+	e.GET("/api/articles", articleHandler.GetArticles)
+	e.GET("/api/articles/:slug", articleHandler.GetArticleById)
+	protectedRouteGroup.POST("/articles", articleHandler.CreateArticle)
+	protectedRouteGroup.DELETE("/articles/:id", articleHandler.DeleteArticle)
+	protectedRouteGroup.POST("/files", lib.FileUploadHandler)
 
 	e.Logger.Fatal(e.Start("localhost:3000"))
 }
@@ -56,7 +67,13 @@ func GetDBConnection() *sql.DB {
 	dsn := "root:@tcp(localhost:3306)/golang_article?parseTime=true"
 	d, err := sql.Open("mysql", dsn)
 	if err != nil {
-		log.Fatal(err)
+		lib.Logrus.WithFields(logrus.Fields{
+			"timestamp": time.Now(),
+			"details":   err.Error(),
+			"context": map[string]any{
+				"action": "get_db_connection",
+			},
+		}).Error("Failed to open connection to database")
 	}
 	d.SetMaxOpenConns(6)
 	d.SetMaxIdleConns(2)

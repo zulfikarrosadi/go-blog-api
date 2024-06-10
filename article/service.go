@@ -3,18 +3,15 @@ package article
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/zulfikarrosadi/go-blog-api/lib"
+	"github.com/zulfikarrosadi/go-blog-api/web"
 )
-
-type Response struct {
-	Status string `json:"status"`
-	Code   int    `json:"code"`
-	Data   any    `json:"data"`
-	Error  Error  `json:"errors"`
-}
 
 type Error struct {
 	Message string `json:"message"`
@@ -28,10 +25,10 @@ type ErrorDetail struct {
 }
 
 type ArticleService interface {
-	GetArticles(context.Context) Response
-	FindArticleById(int, context.Context) Response
-	CreateArticle(Article, context.Context) Response
-	DeleteArticleById(int, context.Context) Response
+	GetArticles(context.Context) web.Response
+	FindArticleById(string, context.Context) web.Response
+	CreateArticle(*CreateArticleRequest, context.Context) web.Response
+	DeleteArticleById(int, context.Context) web.Response
 }
 
 type ArticleServiceImpl struct {
@@ -48,7 +45,7 @@ func NewArticleService(
 	}
 }
 
-func (as *ArticleServiceImpl) GetArticles(ctx context.Context) Response {
+func (as *ArticleServiceImpl) GetArticles(ctx context.Context) web.Response {
 	articlesChannel := make(chan []Article)
 	errorChannel := make(chan error)
 	defer close(articlesChannel)
@@ -66,20 +63,19 @@ func (as *ArticleServiceImpl) GetArticles(ctx context.Context) Response {
 	select {
 	case result := <-articlesChannel:
 		fmt.Println(result)
-		response := &Response{
+		response := &web.Response{
 			Status: "success",
 			Code:   200,
 			Data:   result,
-			Error:  Error{},
 		}
 		return *response
 	case result := <-errorChannel:
 		fmt.Println(result)
-		response := &Response{
+		response := &web.Response{
 			Status: "fail",
 			Code:   400,
 			Data:   nil,
-			Error: Error{
+			Error: web.Error{
 				Message: result.Error(),
 			},
 		}
@@ -87,42 +83,76 @@ func (as *ArticleServiceImpl) GetArticles(ctx context.Context) Response {
 	}
 }
 
-func (as *ArticleServiceImpl) FindArticleById(id int, ctx context.Context) Response {
+func (as *ArticleServiceImpl) FindArticleById(slug string, ctx context.Context) web.Response {
 	articleChannel := make(chan *Article)
+	errorChannel := make(chan error)
 	defer close(articleChannel)
+	defer close(errorChannel)
 
-	go func() {
-		articleChannel <- as.ArticleRepository.FindArticleById(id, ctx)
-	}()
-
-	article := <-articleChannel
-	if article == nil {
-		return Response{
+	timestamp, err := extractTimestampFromSlug(slug)
+	if err != nil {
+		return web.Response{
 			Status: "fail",
 			Code:   http.StatusNotFound,
-			Data:   nil,
+			Error: web.Error{
+				Message: "article not found",
+			},
+			Data: nil,
 		}
 	}
-	return Response{
-		Status: "success",
-		Code:   http.StatusOK,
-		Data:   article,
+
+	go func() {
+		article, err := as.ArticleRepository.FindArticleById(timestamp, ctx)
+		if err != nil {
+			errorChannel <- err
+			return
+		}
+		articleChannel <- article
+	}()
+
+	select {
+	case result := <-errorChannel:
+		if newErr := result.(*net.OpError); newErr != nil {
+			return web.Response{
+				Status: "fail",
+				Code:   http.StatusInternalServerError,
+				Error: web.Error{
+					Message: "something went wrong, please wait and try again",
+				},
+				Data: nil,
+			}
+		}
+		return web.Response{
+			Status: "fail",
+			Code:   http.StatusNotFound,
+			Error: web.Error{
+				Message: "article not found",
+			},
+			Data: nil,
+		}
+	case result := <-articleChannel:
+		return web.Response{
+			Status: "success",
+			Code:   http.StatusOK,
+			Data:   result,
+		}
 	}
 }
 
-func (as *ArticleServiceImpl) CreateArticle(data *ArticleRequest, ctx context.Context) Response {
+func (as *ArticleServiceImpl) CreateArticle(data *CreateArticleRequest, ctx context.Context) web.Response {
 	err := as.v.Struct(data)
 	if err != nil {
 		validatedError := lib.ValidateError(err.(validator.ValidationErrors))
-		return Response{
+		return web.Response{
 			Status: "fail",
 			Code:   http.StatusBadRequest,
-			Error: Error{
+			Error: web.Error{
 				Message: "validation error",
 				Detail:  validatedError,
 			},
 		}
 	}
+	data.Slug = createSlug(data.Title, data.CreatedAt)
 
 	errorChannel := make(chan error)
 	articleIdChannel := make(chan int64)
@@ -136,10 +166,11 @@ func (as *ArticleServiceImpl) CreateArticle(data *ArticleRequest, ctx context.Co
 	}()
 	err = <-errorChannel
 	if err != nil {
-		return Response{
+		fmt.Println(err)
+		return web.Response{
 			Status: "fail",
 			Code:   http.StatusBadRequest,
-			Error: Error{
+			Error: web.Error{
 				Message: "cannot create article, please try again",
 				Detail: []ErrorDetail{{
 					Path:  "title",
@@ -151,16 +182,17 @@ func (as *ArticleServiceImpl) CreateArticle(data *ArticleRequest, ctx context.Co
 			},
 		}
 	}
-	return Response{
+	return web.Response{
 		Status: "success",
 		Code:   http.StatusCreated,
 		Data: struct {
-			Id int64 `json:"id"`
-		}{Id: <-articleIdChannel},
+			Id   int64  `json:"id"`
+			Slug string `json:"slug"`
+		}{Id: <-articleIdChannel, Slug: data.Slug},
 	}
 }
 
-func (as *ArticleServiceImpl) DeleteArticleById(id int, ctx context.Context) Response {
+func (as *ArticleServiceImpl) DeleteArticleById(id int, ctx context.Context) web.Response {
 	errorChannel := make(chan error)
 	defer close(errorChannel)
 
@@ -169,16 +201,35 @@ func (as *ArticleServiceImpl) DeleteArticleById(id int, ctx context.Context) Res
 	}()
 	err := <-errorChannel
 	if err != nil {
-		return Response{
+		return web.Response{
 			Status: "fail",
 			Code:   http.StatusNotFound,
-			Error: Error{
+			Error: web.Error{
 				Message: "cannot delete article, please try again",
 			},
 		}
 	}
-	return Response{
+	return web.Response{
 		Status: "success",
 		Code:   http.StatusNoContent,
 	}
+}
+
+func createSlug(title string, timestamp int64) string {
+	splitedTitle := strings.Split(strings.Trim(title, " "), " ")
+	slug := strings.ToLower(strings.Join(splitedTitle, "-"))
+	stringifyTimestamp := strconv.FormatInt(timestamp, 10)
+	slug = slug + "-" + stringifyTimestamp
+
+	return slug
+}
+
+func extractTimestampFromSlug(slug string) (int64, error) {
+	splitedSlug := strings.Split(slug, "-")
+	i, err := strconv.ParseInt(splitedSlug[len(splitedSlug)-1], 10, 64)
+	if err != nil {
+		return 0, err
+	}
+
+	return i, nil
 }
