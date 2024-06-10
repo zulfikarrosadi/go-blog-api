@@ -215,7 +215,6 @@ func (as *ArticleServiceImpl) DeleteArticleById(id int, ctx context.Context) web
 }
 
 func (as *ArticleServiceImpl) UpdateArticleById(articleId int, data *UpdateArticleRequest, ctx context.Context) web.Response {
-	data.Slug = createSlug(data.Title)
 	err := as.ArticleRepository.UpdateArticleById(articleId, data, ctx)
 	if err != nil {
 		return web.Response{
